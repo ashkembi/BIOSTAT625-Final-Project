@@ -17,7 +17,7 @@ subunits <- unique(MSHA[MSHA$SUBUNIT_CD %in% c(30,1,2,3,17, 6),9])
 ## Introduction
 The mining industry is among the most dangerous in the United States [1].Various measures have been implemented over the past century to improve mining-related working conditions, particularly the creation of the Mine Safety and Health Administration (MSHA) in 1977, leading to a dramatic reduction in workplace injuries and fatalities [2]. This trend provides an opportunity to leverage statistical methodology to determine the driving factors of these changes. Additionally, specific occupations within the mining industry are known to have a higher incidence of injury than others. Understanding the differences in these occupations could improve strategies to reduce worker harm.
 
-Investigation of these text fields, while data intensive, could provide rich insights into predictors of dangerous job situations and lead to more targeted interventions in improving workplace safety. To do so, text mining techniques, such as natural language processing, can be employed. The aim of this project is to analyze the free-text entries in the Mine Accident, Injuries, and Illness report (MSHA Form 7000-1) from 2000 to 2021 to identify predictors of extreme vs non-extreme injuries. This analysis will identify which jobs are most dangerous and whether job-specific severe injury incidence decreases over the 22 year period included in the report.
+Investigation of text fields, while data intensive, could provide rich insights into predictors of dangerous job situations and lead to more targeted interventions in improving workplace safety. To do so, text mining techniques, such as natural language processing, can be employed. The aim of this project is to analyze the free-text entries in the Mine Accident, Injuries, and Illness report (MSHA Form 7000-1) from 2000 to 2021 to identify predictors of extreme vs non-extreme injuries. This analysis will identify which jobs are most dangerous.
 
 
 ## Methods
@@ -29,22 +29,23 @@ MSHA, under the United States Department of Labor, maintains a database of all m
 table1_final <- MSHA %>% group_by(DEGREE_INJURY) %>% count() %>% arrange(-n) %>% mutate(DEGREE_INJURY = str_to_title(tolower(DEGREE_INJURY)))
 
 kableExtra::kable(list(table1_final[1:6,], table1_final[7:12,]),
+                  col.names = c("Degree of injury", "N"),
       caption = "Degrees of injuries in MSHA dataset",
       booktabs = T)%>%
   kableExtra::kable_styling(latex_options = "hold_position")
 ```
 
 
-The original 2000-2021 data has 246,395 entries, with the degree of injury coded into 10 categories (Table 1). Accidents only (n = 28,138 incidents), injuries involving natural causes (n = 1,281 incidents), and injuries without a category (n = 910 incidents) were dropped from analysis. “Extreme injuries” are defined as injuries that resulted in “fatality” or “permanent total/partial disability” categories. Non-extreme injuries are defined as those resulting in “days away from work” and/or “days with restricted activities” categories.
+The original 2000-2021 data has 246,395 entries, with the degree of injury coded into 10 categories (Table 1). Accidents only (n = 28,138 incidents), injuries involving natural causes (n = 1,281 incidents), and injuries without a category (n = 910 incidents) were dropped from analysis. “Extreme injuries” are defined as injuries that resulted in “fatality” or “permanent total/partial disability” categories. Non-extreme injuries are defined as all other injuries.
 
 
-The final matrix includes 216,066 rows and 426 columns, with each row representing an injury case and each column is an individual occupation descriptor. These descriptors can be considered tokens. A naive bayes classifier was used to identify the indicators of “extreme” and “non-extreme” accidents from job descriptions. *I think we need another sentence here before we begin explaining Naive Bayes (explain why Naive Bayes and its relevance to this analysis)* Naive Bayes classifiers are a family of simple probabilistic classifiers, which assumes all words (also called tokens) occur independently. With the term matrix created above,we calculated the likelihood of each token’s occurrence in extreme injuries and non-extreme injuries with the following formula:
+The final matrix includes 216,066 rows and 426 columns, with each row representing an injury case and each column is an individual occupation descriptor. These descriptors can be considered tokens. A Naive Bayes classifier was used to identify the indicators of “extreme” and “non-extreme” accidents from job descriptions. Naive Bayes classifiers are a family of simple probabilistic classifiers, which assumes all words (or tokens) occur independently. With the term matrix created above, we calculated the likelihood of each token’s occurrence in extreme injuries and non-extreme injuries with the following formula:
 
-\[P(token_i|extreme)=\frac{occurrence\space of\space token_i\space in\space extreme\space injuries} {total\space words\space in\space extreme\space injuries}\]
+\[P(token_i|extreme)=\frac{\text{occurrence of } token_i \text{ in extreme injuries}} {\text{total words in extreme injuries}}\]
 
-\[P(token_i|non\text-extreme)=\frac{occurrence\space of\space token_i\space in\space non\text-extreme\space injuries} {total\space words\space in\space non\text-extreme\space injuries}\]
+\[P(token_i|extreme)=\frac{\text{occurrence of } token_i \text{ in non-extreme injuries}} {\text{total words in non-extreme injuries}}\]
 
-In cases where a token never appears in either type of injuries, we use Laplace smoothing method that adds extra occurrence to each token. Because there are 3,265 extreme injuries versus 212,801 non-extreme injuries in general, adding the same extra value will result in a bigger increase of likelihood in extreme events than in non-extreme events. To adjust for that effect, we apply weights to the extra values. 
+In cases where a token never appears in either type of injuries, we use Laplace smoothing method that adds extra occurrence to each token. Because extreme injuries are much more rare than non-extreme injuries, adding the same extra value will result in a bigger increase of likelihood in extreme events than in non-extreme events. To adjust for that effect, we apply weights to the extra values. 
 
 \[P(token_i|extreme)=(N_{token_{i}} + 1 \times N_{token})/(N_{extreme}+N_{token})\]
 
@@ -56,7 +57,7 @@ where $k = N_{non\text-extreme}/N_{extreme}$, N is the number of occurrences of 
 
 If the likelihood ratio of a token is bigger than 1, it implies that this token is more indicative of an extreme injury; if it is smaller than 1, then it is more indicative of a non-extreme injury. 
 
-The calculation is conducted in RStudio v.4.2.1. Because the dataset contains a huge amount of words and the term document matrix is large, we vectorized our code to improve the efficiency. After calculating the ratio, we picked the top 10 tokens that are most indicative of extreme injuries, then compared the ratio changes over the 22 years to check the trend. We also extracted the top two tokens by their ratios in each of six mining subunits. Each subunit represents a type of mine locations where a collection of jobs are conducted. Therefore, we can get a broad idea of which jobs are most indicative of extreme injuries in various mining locations. 
+The calculation is conducted in RStudio v.4.2.1. Because the dataset contains a huge amount of words and the term document matrix is large, we vectorized our code to improve the efficiency. After calculating the ratio, we picked the top 10 tokens that are most indicative of extreme injuries, then compared the ratio changes over the 22 years to check the trend using Pearson's correlation. We also extracted the top two tokens by their ratios in each of six mining sub-units. Each sub-unit represents a type of mine locations where a collection of jobs are conducted. Therefore, we can get a broad idea of which jobs are most indicative of extreme injuries in various mining locations. 
 
 
 ## Results
@@ -64,12 +65,12 @@ The calculation is conducted in RStudio v.4.2.1. Because the dataset contains a 
 ##### Description of the dataset
 
 ```{r message=FALSE, warning=FALSE}
-table1_cats <- tibble(
+table2_cats <- tibble(
   `Category` =  c("Total", "Mine Sub-unit", "Dredge", "Independent shops", "Mill operation", "Strip/quarry", "Surface (underground mine)", "Underground", "Year", "2000 to 2004", "2005 to 2009", "2010 to 2014", "2015 to 2021"),
   SUBUNIT = c("Total", NA, "DREDGE", "INDEPENDENT SHOPS OR YARDS", "MILL OPERATION/PREPARATION PLANT", "STRIP, QUARY, OPEN PIT", "SURFACE AT UNDERGROUND", "UNDERGROUND", NA, "1", "2", "3", "4")
 )
 
-table1_results <- MSHA2 %>%
+table2_results <- MSHA2 %>%
   mutate(SUBUNIT = "Total") %>%
   group_by(SUBUNIT) %>%
   summarise(n = n(), extreme = sum(EXTREME)) %>%
@@ -83,12 +84,18 @@ table1_results <- MSHA2 %>%
   mutate(perc = round(100*n/216066, 1),
          n = paste0(n, " (", perc, "%)")) %>% select(-perc)
 
+table2_final <- table2_cats %>% left_join(table2_results) %>%
+  select(-SUBUNIT)
 
-kableExtra::kable(table1_cats %>% left_join(table1_results) %>%
-  select(-SUBUNIT),
+table2_final[is.na(table2_final)] <- " "
+
+kableExtra::kable(table2_final,
+  col.names = c("Category", "N (%)", "Extreme Injuries, N (%)"),
       caption = "Overview of incident records in MSHA dataset",
       booktabs = T)%>%
-  kableExtra::kable_styling(latex_options = "hold_position")
+  kableExtra::kable_styling(latex_options = "hold_position")  %>%
+  kableExtra::row_spec(c(1,2,9), bold = T) %>%
+  kableExtra::add_indent(c(3:8, 10:13))
 ```
 
 A total of 216,066 injury incidents were included in this analysis, of which 3,265 (1.5%) were considered extreme injury incidents (Table 2). These incidents were associated with a total of 426 tokens that describe the occupation of the miners. Most injury incidents occurred underground (33.9%), in quarries (34.3%), and during mill operations (27.4%). There was a downward trend in the number of injuries since 2000, with 33.1% of incidents arising between 2000 and 2004 and falling to 19.2% by 2015 to 2021. Generally, there was very little difference in the percent of extreme incidents by mine sub-unit or year (1.3% to 2%).
@@ -96,8 +103,7 @@ A total of 216,066 injury incidents were included in this analysis, of which 3,2
 
 ##### Naive Bayes analysis
 
-
-Of the 426 tokens that describe the occupation, 158 (37%) of words had a likelihood ratio (LR) > 1. Superintendent had the highest LR, with superintendents 3.8 times more likely to experience an extreme injury than a non-extreme injury. Occupations related to auger (LR = 3.7) and stoper (LR = 3.3) made up the top 3 most likely jobs to experience an extreme injury than non-extreme. The rest of the occupations that were the top 10 most likely to experience an extreme injury include work related to "tender" (LR = 3.1), "shaftcrew" (LR = 3.0), "washer" (LR = 2.7), "shaft" (LR = 2.6), "iron" (LR = 2.5), "chute" (LR = 2.5); and "grizzly" (LR = 2.4). Among the jobs which were the most likely to experience a non-extreme injury than an extreme injury, the top 3 were related to security, guard, and watchman. All of these jobs had 0.3 times lower likelihood of a non-extreme injury than an extreme injury.
+Of the 426 tokens that describe the occupation, 170 (40%) of words had a likelihood ratio (LR) > 1. Superintendent had the highest LR, with superintendents 3.9 times more likely to experience an extreme injury than a non-extreme injury. Occupations related to auger (LR = 3.8) and stoper (LR = 3.4) made up the top 3 most likely jobs to experience an extreme injury than non-extreme. The rest of the occupations that were the top 10 most likely to experience an extreme injury include work related to "tender" (LR = 3.2), "shaftcrew" (LR = 3.0), "washer" (LR = 2.8), "shaft" (LR = 2.6), "iron" (LR = 2.6), "chute" (LR = 2.5); and "grizzly" (LR = 2.4). Among the jobs which were the most likely to experience a non-extreme injury than an extreme injury, the top 3 were related to security, guard, and watchman. All of these jobs had 0.3 times lower likelihood of a non-extreme injury than an extreme injury.
 
 ##### Trends by year
 
@@ -118,14 +124,15 @@ year_df %>%
   ) +
   geom_hline(yintercept = 1, linetype = 2) +
   labs(x = "Year", y = "Likelihood ratio of extreme injury") +
+  theme(axis.text.x = element_text(angle = 0)) +
   coord_flip() 
 ```
 
-Figure 1 presents the most indicative words (highest LR) of extreme injuries by year. In 2001, stoper had the highest likelihood ratio, with stopers having 4.6 times higher likelihood of an extreme event than non-extreme event. Work related to "highwall" drilling in 2009 (LR = 4.4), "iron" work in 2021 (LR = 4.3), augers in 2017 (4.2), and superintendents in 2005 (LR = 3.7) were the most indicative of extreme injuries. Within the last five years, work related to auger (LR = 4.2), dryer operation (LR = 2.2), transit (LR = 2.4), LW propman (LR = 3.0) and iron work (LR = 4.3) were the most likely to experience an extreme injury from 2017 to 2021, respectively.
+Figure 1 presents the most indicative words (highest LR) of extreme injuries by year. In 2021, "iron" work had the highest likelihood ratio, with such workers having 5.1 times higher likelihood of an extreme event than non-extreme event. Work related to augers in 2017 (LR = 5.0), "highwall" drilling in 2009 (LR = 4.9), stopers in 2001 (LR = 4.9), and superintendents in 2005 (LR = 4.0) were the most indicative of extreme injuries. Within the last five years, work related to auger (LR = 5.0), dryer operation (LR = 2.6), transit (LR = 2.8), LW propman (LR = 3.5) and "iron" work (LR = 5.1) were the most likely to experience an extreme injury from 2017 to 2021, respectively.
 
-Yearly trends in the likelihood ratio of the overall top 10 most likely jobs to experience an extreme injury (Table 3) from 2000 to 2021 is shown in Figure 2. Overall, superintendents (r = -0.40) and stopers (r = -0.41) had a decreasing trend in likelihood ratios from year to year. Grizzly (r = 0.56), washer work (r = 0.41), iron work (0.24), tender work (r = 0.18), and chute work (r = 0.12) demonstrated a yearly, increasing trend. Work related to auger, shaft and shaftcrew did not display a yearly trend. None of the top 10 most indicative words consistently had a likelihood ratio > 1 for every year.
+Yearly trends in the likelihood ratio of the overall top 10 most likely jobs to experience an extreme injury (Table 3) from 2000 to 2021 is shown in Figure 2. Overall, superintendents (r = -0.32) and stopers (r = -0.37) had a decreasing trend in likelihood ratios from year to year. Grizzly (r = 0.59), washer work (r = 0.45), iron work (0.27), tender work (r = 0.24), and chute work (r = 0.22) demonstrated a yearly, increasing trend. Work related to augers, shaft and shaftcrew did not display a yearly trend. None of the top 10 most indicative words consistently had a likelihood ratio > 1 for every year.
 
-```{r message=FALSE, warning=FALSE, fig.align="center", fig.cap="Changes in likelihood ratio from 2000 to 2021 for the top 10 most indicative tokens of extreme injuries compared to non-extreme injuries", fig.height=3.6}
+```{r message=FALSE, warning=FALSE, fig.align="center", fig.cap="Changes in likelihood ratio from 2000 to 2021 for the top 10 most indicative tokens of extreme injuries compared to non-extreme injuries", fig.height=4}
 year_df %>% filter(token %in% names(logratio[1:10]) ) %>%  #.$token %>% unique
   mutate(token = factor(toupper(token), levels = toupper(names(logratio[1:10])))) %>%
   ggplot(aes(x = year, y = ratio)) +
@@ -142,7 +149,7 @@ year_df %>% filter(token %in% names(logratio[1:10]) ) %>%  #.$token %>% unique
 
 ##### Differences by mine sub-unit
 
-The top 2 tokens most indicative of extreme injuries compared to non-extreme injuries were examined by mine sub-unit (Figure 3). Among dredge mining, superintendents and drivers were 2.9 and 2.6 times more likely to experience an extreme injury than a non-extreme injury, respectively. Among independent shops, jobs related to "mine" (which were linked with "mine managers" and "mine examiner" in the dataset) were 3.3 times more likely to experience an extreme injury than a non-extreme event. Words related to "manager" and "owner" had the same likelihood ratio (LR = 1.7). Among mill operation, superintendents were 3.1 times more likely to experience an extreme injury than a non-extreme injury, with "motorman", "motor", and "switchman" having similar likelihood ratios (3.0). Among quarries, superintendents were once more the most indicative of an extreme event (LR = 3.3), with augers having 2.9 times higher likelihood of an extreme event than non-extreme. At the surface of underground mines, drivers and truckers were the most likely to experience an extreme event (LRs = 2.4 and LR 2.3, respectively). Lastly, tenders and stopers were the most likely to experience an extreme event at underground mines (LRs = 4.1 and LR = 3.3, respectively). Superintendents were the most indicative of extreme events in three mine sub-units (dredge, mill operations, and quarry) and drivers were the most indicative in dredge mining and at the surface of underground mines.
+The top 2 tokens most indicative of extreme injuries compared to non-extreme injuries were examined by mine sub-unit (Figure 3). Among dredge mining, superintendents and drivers were 3.3 and 3.0 times more likely to experience an extreme injury than a non-extreme injury, respectively. Among independent shops, jobs related to "mine" (which were linked with "mine managers" and "mine examiner" in the dataset) were 4.8 times more likely to experience an extreme injury than a non-extreme event. Words related to "manager" and "owner" had the same likelihood ratio (LR = 2.5). Among mill operation, superintendents were 3.1 times more likely to experience an extreme injury than a non-extreme injury, with "motorman", "motor", and "switchman" having similar likelihood ratios (3.1). Among quarries, superintendents were once more the most indicative of an extreme event (LR = 3.4), with augers having 2.9 times higher likelihood of an extreme event than non-extreme. At the surface of underground mines, drivers and truckers were the most likely to experience an extreme event (LRs = 2.9 and LR 2.7, respectively). Lastly, tenders and stopers were the most likely to experience an extreme event at underground mines (LRs = 4.2 and LR = 3.4, respectively). Superintendents were the most indicative of extreme events in three mine sub-units (dredge, mill operations, and quarry) and drivers were the most indicative in dredge mining and at the surface of underground mines.
 
 ```{r message=FALSE, warning=FALSE, fig.align="center", fig.cap="Top 2 most indicative tokens by mine sub-unit of extreme injuries compared to non-extreme injuries", fig.height=2.7}
 subunit_df %>% 
@@ -150,17 +157,20 @@ subunit_df %>%
   filter(subunit %in% subunits) %>% 
   slice_max(order_by = ratio, n = 2) %>%
   ungroup() %>%
+  mutate(Subunit = str_to_title(tolower(subunit))) %>%
   ggpubr::ggdotchart(x = "token", y = "ratio",
-                     color = "subunit",                                
+                     color = "Subunit",                                
                      sorting = "ascending",                       
                      add = "segments",  
                      add.params = list(color = "lightgray", size = 1), 
-                     group = "subunit", 
+                     group = "Subunit", 
                      dot.size = 3,
                      ggtheme = theme_bw() 
   ) +
   geom_hline(yintercept = 1, linetype = 2) +
-  coord_flip() 
+  labs(x = "Token", y = "Likelihood ratio of extreme injury") +
+  theme(axis.text.x = element_text(angle = 0)) +
+  coord_flip()
 
 ```
 
@@ -168,7 +178,7 @@ subunit_df %>%
 
 ## Discussion
 
-The mining industry is a unique sector of the workforce. It includes many highly specialized sets of tasks, which make it difficult to group jobs into categories that are comparable with other industries. “Grizzly,” for example, involves a specific set of tasks not easily interpretable to other contexts. This poses challenges when attempting to determine which roles might be the best targets for injury prevention. Additionally, these job tasks have specific mining-relevant meaning that require a mining context to understand [4].  In this analysis, naive bayes classification with LaPlace smoothing was used to determine the likelihood of an extreme or non-extreme injury event for each job task in the dataset and find that “superintendent” has the highest likelihood of experiencing an extreme injury. This method allows for the job tasks as they appear in the dataset to be used to determine the likelihood of an extreme event. This information can be used by mine leadership, policymakers, and governing bodies to identify interventions for improved mine safety. 
+The mining industry is a unique sector of the workforce. It includes many highly specialized sets of tasks, which make it difficult to group jobs into categories that are comparable with other industries. “Grizzly,” for example, involves a specific set of tasks not easily interpretable to other contexts. This poses challenges when attempting to determine which roles might be the best targets for injury prevention. Additionally, these job tasks have specific mining-relevant meaning that require a mining context to understand [4].  In this analysis, naive bayes classification with LaPlace smoothing was used to determine the likelihood of an extreme or non-extreme injury event for each job task in the dataset and find that “superintendent” has the highest likelihood of experiencing an extreme injury. This method allows for the job tasks as they appear in the dataset to be used to determine the likelihood of workers experiencing an extreme event. This information can be used by mine leadership and policymakers to identify interventions for improved mine safety for the most dangerous jobs at mine sites. 
 
 ## References
 
@@ -181,7 +191,13 @@ The mining industry is a unique sector of the workforce. It includes many highly
 4. National Institute for Occupational Safety and Health. "6 Emerging Issues in Mining Safety and Health." 2007. The National Academies Press. doi: 10.17226/11850.
 
 
-### Contributions
+##### Author Contributions 
 
-**Xin Zhang:** Concept and design, presentation slides, proposal editing, statistical analysis, data interpretation, bibliography, drafting of final report. **Ariana Haidari:** Presentation slides, critical revision, project proposal authorship, data interpretation, final report authorship, bibliography. **Abas Shkembi:** GitHub initiation, drafting of final report, critical revision, statistical analysis, concept and design, project proposal authorship, presentation slides, dataset selection, data interpretation, final report authorship
+**Xin Zhang:** Concept and design, presentation slides, proposal editing, statistical analysis, data interpretation, bibliography, drafting of final report. **Ariana Haidari:** Presentation slides, critical revision, project proposal authorship, data interpretation, final report authorship, bibliography. **Abas Shkembi:** GitHub initiation, drafting of final report, critical revision, statistical analysis, concept and design, project proposal authorship, presentation slides, dataset selection, data interpretation, final report authorship.
+
+##### Data availability
+
+All data and code used in this project analysis is publicly available in the following repository: https://github.com/ashkembi/BIOSTAT625-Final-Project
+
+
 
