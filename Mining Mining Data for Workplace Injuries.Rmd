@@ -7,8 +7,12 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
+load("/Users/abasshkembi/Dropbox (University of Michigan)/BIOSTAT625 Final Project/BIOSTAT625-Final-Project/Data/MSHA.RData")
+load("/Users/abasshkembi/Dropbox (University of Michigan)/BIOSTAT625 Final Project/BIOSTAT625-Final-Project/Data/RMD_data.RData")
+
+subunits <- unique(MSHA[MSHA$SUBUNIT_CD %in% c(30,1,2,3,17, 6),9])
 ```
 
 ## Results
@@ -17,7 +21,7 @@ library(tidyverse)
 
 ```{r message=FALSE, warning=FALSE}
 table1_cats <- tibble(
-  `Category` =  c("Total", "Mine Subunit", "Dredge", "Independent shops", "Mill operation", "Strip/quarry", "Surface (underground mine)", "Underground", "Year", "2000 to 2004", "2005 to 2009", "2010 to 2014", "2015 to 2021"),
+  `Category` =  c("Total", "Mine Sub-unit", "Dredge", "Independent shops", "Mill operation", "Strip/quarry", "Surface (underground mine)", "Underground", "Year", "2000 to 2004", "2005 to 2009", "2010 to 2014", "2015 to 2021"),
   SUBUNIT = c("Total", NA, "DREDGE", "INDEPENDENT SHOPS OR YARDS", "MILL OPERATION/PREPARATION PLANT", "STRIP, QUARY, OPEN PIT", "SURFACE AT UNDERGROUND", "UNDERGROUND", NA, "1", "2", "3", "4")
 )
 
@@ -39,18 +43,75 @@ table1_cats %>% left_join(table1_results) %>%
   select(-SUBUNIT)
 ```
 
-A total of 216,066 injury incidents were included in this analysis, of which 3,265 (1.5%) were considered extreme events (Table 1). 
+A total of 216,066 injury incidents were included in this analysis, of which 3,265 (1.5%) were considered extreme injury incidents (Table 1). These incidents were associated with a total of 426 tokens that describe the occupation of the miners. Most injury incidents occurred underground (33.9%), in quarries (34.3%), and during mill operations (27.4%). There was a downward trend in the number of injuries since 2000, with 33.1% of incidents arising between 2000 and 2004 and falling to 19.2% by 2015 to 2021. Generally, there was very little difference in the percent of extreme incidents by mine sub-unit or year (1.3% to 2%).
 
-```{r cars}
-summary(cars)
+
+##### Naive Bayes analysis
+
+
+Of the 426 tokens that describe the occupation, 158 (37%) of words had a likelihood ratio (LR) > 1. Superintendent had the highest LR, with superintendents 3.8 times more likely to experience an extreme injury than a non-extreme injury. Occupations related to auger (LR = 3.7) and stoper (LR = 3.3) made up the top 3 most likely jobs to experience an extreme injury than non-extreme. The rest of the occupations that were the top 10 most likely to experience an extreme injury include work related to "tender" (LR = 3.1), "shaftcrew" (LR = 3.0), "washer" (LR = 2.7), "shaft" (LR = 2.6), "iron" (LR = 2.5), "chute" (LR = 2.5); and "grizzly" (LR = 2.4). Among the jobs which were the most likely to experience a non-extreme injury than an extreme injury, the top 3 were related to security, guard, and watchman. All of these jobs had 0.3 times lower likelihood of a non-extreme injury than an extreme injury.
+
+##### Trends by year
+
+```{r message=FALSE, warning=FALSE, fig.align="center", fig.cap="Yearly most indicative tokensof extreme injuries compared to non-extreme injuries"}
+year_df %>%
+  group_by(year) %>%
+  mutate(rank = row_number()) %>%
+  ungroup() %>%
+  filter(rank == 1) %>% select(-rank) %>% mutate(ratio = round(ratio, 1)) %>%
+  arrange(-year) %>%
+  mutate(year = paste0(year, " - ", token)) %>%
+  ggpubr::ggdotchart(x = "year", y = "ratio",
+                     sorting = "none",                       
+                     add = "segments",  
+                     add.params = list(color = "lightgray", size = 2), 
+                     dot.size = 4,
+                     ggtheme = theme_bw() 
+  ) +
+  geom_hline(yintercept = 1, linetype = 2) +
+  coord_flip() 
 ```
 
-## Including Plots
+Figure 1 presents the most indicative words (highest LR) of extreme injuries by year. In 2001, stoper had the highest likelihood ratio, with stopers having 4.6 times higher likelihood of an extreme event than non-extreme event. Work related to "highwall" drilling in 2009 (LR = 4.4), "iron" work in 2021 (LR = 4.3), augers in 2017 (4.2), and superintendents in 2005 (LR = 3.7) were the most indicative of extreme injuries. Within the last five years, work related to auger (LR = 4.2), dryer operation (LR = 2.2), transit (LR = 2.4), LW propman (LR = 3.0) and iron work (LR = 4.3) were the most likely to experience an extreme injury from 2017 to 2021, respectively.
 
-You can also embed plots, for example:
+Yearly trends in the likelihood ratio of the overall top 10 most likely jobs to experience an extreme injury (Table 2) from 2000 to 2021 is shown in Figure 2. Overall, superintendents (r = -0.40) and stopers (r = -0.41) had a decreasing trend in likelihood ratios from year to year. Grizzly (r = 0.56), washer work (r = 0.41), iron work (0.24), tender work (r = 0.18), and chute work (r = 0.12) demonstrated a yearly, increasing trend. Work related to auger, shaft and shaftcrew did not display a yearly trend. None of the top 10 most indicative words consistently had a likelihood ratio > 1 for every year.
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r message=FALSE, warning=FALSE, fig.align="center", fig.cap="Changes in likelihood ratio from 2000 to 2021 for the top 10 most indicative tokens of extreme injuries compared to non-extreme injuries"}
+year_df %>% filter(token %in% names(logratio[1:10]) ) %>%  #.$token %>% unique
+  mutate(token = factor(toupper(token), levels = toupper(names(logratio[1:10])))) %>%
+  ggplot(aes(x = year, y = ratio)) +
+  geom_line() +
+  geom_point(size = 0.6) +
+  stat_smooth(geom = "line", se=F, method = "lm", color = "hotpink", size = 2, alpha = 0.5)+
+  geom_hline(yintercept = 1, linetype = 2) +
+  facet_wrap(~token, ncol = 5) +
+  theme_bw() +
+  labs(x = "Year", y = "Likelihood ratio of extreme injury") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+##### Differences by mine sub-unit
+
+The top 2 tokens most indicative of extreme injuries compared to non-extreme injuries were examined by mine sub-unit (Figure 3). Among dredge mining, superintendents and drivers were 2.9 and 2.6 times more likely to experience an extreme injury than a non-extreme injury, respectively. Among independent shops, jobs related to "mine" (which were linked with "mine managers" and "mine examiner" in the dataset) were 3.3 times more likely to experience an extreme injury than a non-extreme event. Words related to "manager" and "owner" had the same likelihood ratio (LR = 1.7). Among mill operation, superintendents were 3.1 times more likely to experience an extreme injury than a non-extreme injury, with "motorman", "motor", and "switchman" having similar likelihood ratios (3.0). Among quarries, superintendents were once more the most indicative of an extreme event (LR = 3.3), with augers having 2.9 times higher likelihood of an extreme event than non-extreme. At the surface of underground mines, drivers and truckers were the most likely to experience an extreme event (LRs = 2.4 and LR 2.3, respectively). Lastly, tenders and stopers were the most likely to experience an extreme event at underground mines (LRs = 4.1 and LR = 3.3, respectively). Superintendents were the most indicative of extreme events in three mine sub-units (dredge, mill operations, and quarry) and drivers were the most indicative in dredge mining and at the surface of underground mines.
+
+```{r message=FALSE, warning=FALSE, fig.align="center", fig.cap="Top 2 most indicative tokens by mine sub-unit of extreme injuries compared to non-extreme injuries"}
+subunit_df %>% 
+  group_by(subunit) %>%
+  filter(subunit %in% subunits) %>% 
+  slice_max(order_by = ratio, n = 2) %>%
+  ungroup() %>%
+  ggpubr::ggdotchart(x = "token", y = "ratio",
+                     color = "subunit",                                
+                     sorting = "ascending",                       
+                     add = "segments",  
+                     add.params = list(color = "lightgray", size = 2), 
+                     group = "subunit", 
+                     dot.size = 4,
+                     ggtheme = theme_bw() 
+  ) +
+  geom_hline(yintercept = 1, linetype = 2) +
+  coord_flip() 
+
+```

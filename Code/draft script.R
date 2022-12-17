@@ -2,6 +2,11 @@ load("/Users/abasshkembi/Dropbox (University of Michigan)/BIOSTAT625 Final Proje
 library(tidyverse)
 library(tm)
 
+rmd_files <- list(MSHA2, )
+
+save(MSHA2, year_df, logratio, subunit_df, file = "/Users/abasshkembi/Dropbox (University of Michigan)/BIOSTAT625 Final Project/BIOSTAT625-Final-Project/Data/RMD_data.RData"
+ )
+
 
 MSHA <- MSHA %>% as_tibble()
 
@@ -338,9 +343,18 @@ MSHA2 %>%
 
 logratio[1:10]
 
+sum(logratio > 1)
+length(logratio)
+
 logratio[(length(logratio) - 9):length(logratio)]
 
 
+year_df %>%
+  group_by(year) %>%
+  mutate(rank = row_number()) %>%
+  ungroup() %>%
+  filter(rank == 1) %>%
+  print(n = nrow(.))
 
 
 
@@ -350,14 +364,78 @@ logratio[(length(logratio) - 9):length(logratio)]
 
 
 
+library(lme4)
+library(lmerTest)
 
+year_df %>% filter(token %in% names(logratio[1]) ) %>%
+  lm(ratio ~ year, data = .) %>%
+  summary()
 
+year_df %>% filter(token %in% names(logratio[2]) ) %>%
+  lm(ratio ~ year, data = .) %>%
+  summary()
 
+year_df %>% filter(token %in% names(logratio[3]) ) %>%
+  lm(ratio ~ year, data = .) %>%
+  summary()
 
+year_df %>% filter(token %in% names(logratio[4]) ) %>%
+  lm(ratio ~ year, data = .) %>%
+  summary()
 
+year_df %>% filter(token %in% names(logratio[5]) ) %>%
+  lm(ratio ~ year, data = .) %>%
+  summary()
 
+year_df %>% filter(token %in% names(logratio[6]) ) %>%
+  lm(ratio ~ year, data = .) %>%
+  summary()
 
+year_df %>% filter(token %in% names(logratio[7]) ) %>%
+  lm(ratio ~ year, data = .) %>%
+  summary()
 
+year_df %>% filter(token %in% names(logratio[8]) ) %>%
+  lm(ratio ~ year, data = .) %>%
+  summary()
+
+year_df %>% filter(token %in% names(logratio[9]) ) %>%
+  lm(ratio ~ year, data = .) %>%
+  summary()
+
+year_df %>% filter(token %in% names(logratio[10]) ) %>%
+  lm(ratio ~ year, data = .) %>%
+  summary()
+
+cor.test(year_df %>% filter(token %in% names(logratio[1]) ) %>% .$year,
+    year_df %>% filter(token %in% names(logratio[1]) ) %>% .$ratio)
+
+cor.test(year_df %>% filter(token %in% names(logratio[2]) ) %>% .$year,
+    year_df %>% filter(token %in% names(logratio[2]) ) %>% .$ratio)
+
+cor.test(year_df %>% filter(token %in% names(logratio[3]) ) %>% .$year,
+    year_df %>% filter(token %in% names(logratio[3]) ) %>% .$ratio)
+
+cor.test(year_df %>% filter(token %in% names(logratio[4]) ) %>% .$year,
+    year_df %>% filter(token %in% names(logratio[4]) ) %>% .$ratio)
+
+cor.test(year_df %>% filter(token %in% names(logratio[5]) ) %>% .$year,
+    year_df %>% filter(token %in% names(logratio[5]) ) %>% .$ratio)
+
+cor.test(year_df %>% filter(token %in% names(logratio[6]) ) %>% .$year,
+    year_df %>% filter(token %in% names(logratio[6]) ) %>% .$ratio)
+
+cor.test(year_df %>% filter(token %in% names(logratio[7]) ) %>% .$year,
+    year_df %>% filter(token %in% names(logratio[7]) ) %>% .$ratio)
+
+cor.test(year_df %>% filter(token %in% names(logratio[8]) ) %>% .$year,
+    year_df %>% filter(token %in% names(logratio[8]) ) %>% .$ratio)
+
+cor.test(year_df %>% filter(token %in% names(logratio[9]) ) %>% .$year,
+    year_df %>% filter(token %in% names(logratio[9]) ) %>% .$ratio)
+
+cor.test(year_df %>% filter(token %in% names(logratio[10]) ) %>% .$year,
+    year_df %>% filter(token %in% names(logratio[10]) ) %>% .$ratio)
 
 
 
