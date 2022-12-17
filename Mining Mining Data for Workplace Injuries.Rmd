@@ -1,0 +1,56 @@
+---
+title: Mining Mining Data for Workplace Injuries
+author: "Ariana Haidari, Abas Shkembi, Xin Zhang"
+abstract: "Abstract Placeholder"
+indent: TRUE
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+## Results
+
+##### Description of the dataset
+
+```{r message=FALSE, warning=FALSE}
+table1_cats <- tibble(
+  `Category` =  c("Total", "Mine Subunit", "Dredge", "Independent shops", "Mill operation", "Strip/quarry", "Surface (underground mine)", "Underground", "Year", "2000 to 2004", "2005 to 2009", "2010 to 2014", "2015 to 2021"),
+  SUBUNIT = c("Total", NA, "DREDGE", "INDEPENDENT SHOPS OR YARDS", "MILL OPERATION/PREPARATION PLANT", "STRIP, QUARY, OPEN PIT", "SURFACE AT UNDERGROUND", "UNDERGROUND", NA, "1", "2", "3", "4")
+)
+
+table1_results <- MSHA2 %>%
+  mutate(SUBUNIT = "Total") %>%
+  group_by(SUBUNIT) %>%
+  summarise(n = n(), extreme = sum(EXTREME)) %>%
+  ungroup() %>%
+  rbind(MSHA2 %>% filter(SUBUNIT %in% subunits) %>% group_by(SUBUNIT) %>% summarise(n = n(), extreme = sum(EXTREME))) %>%
+  rbind(MSHA2 %>% mutate(CAL_YR2 = ceiling((CAL_YR - 1999)/5)) %>% mutate(CAL_YR2 = ifelse(CAL_YR2 > 4, CAL_YR2-1, CAL_YR2)) %>%
+          group_by(CAL_YR2) %>% summarise(n = n(), extreme = sum(EXTREME)) %>% ungroup() %>% rename("SUBUNIT" = "CAL_YR2")
+          ) %>%
+  mutate(perc = round(extreme/n*100, 1)) %>%
+  mutate(extreme = paste0(extreme, " (", perc, "%)")) %>% select(-perc) %>%
+  mutate(perc = round(100*n/216066, 1),
+         n = paste0(n, " (", perc, "%)")) %>% select(-perc)
+
+table1_cats %>% left_join(table1_results) %>%
+  select(-SUBUNIT)
+```
+
+A total of 216,066 injury incidents were included in this analysis, of which 3,265 (1.5%) were considered extreme events (Table 1). 
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
